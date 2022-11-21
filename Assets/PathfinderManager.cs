@@ -8,6 +8,8 @@ public class PathfinderManager : MonoBehaviour
     [SerializeField] private bool drawGrid;
     [SerializeField] private bool drawPlayerPath;
 
+    private bool inEditMode;
+
     public static PathfinderManager instance;
     private void Awake()
     {
@@ -21,27 +23,19 @@ public class PathfinderManager : MonoBehaviour
         }
     }
 
-    public float GetPlayerSpeed()
-    {
-        return playerSpeed;
-    }
+    public void ToggleEditMode(bool edit) => inEditMode = edit;
 
-    public bool DrawGrid()
-    {
-        return drawGrid;
-    }
-    
-    public bool DrawPlayerPath()
-    {
-        return drawPlayerPath;
-    }
+    public bool InEditMode => inEditMode;
+
+    public float PlayerSpeed => playerSpeed;
+
+    public bool DrawGrid => drawGrid;
+
+    public bool DrawPlayerPath => drawPlayerPath;
 
     public delegate void GenerateGrid();
 
     public static event GenerateGrid onGenerateGrid;
 
-    public static void InvokeGenerateGrid()
-    {
-        onGenerateGrid?.Invoke();
-    }
+    public static void InvokeGenerateGrid() => onGenerateGrid?.Invoke();
 }

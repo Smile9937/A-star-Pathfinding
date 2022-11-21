@@ -22,6 +22,7 @@ public class PathFinder : MonoBehaviour
     }
     void Update()
     {
+        if (pathfinderManager.InEditMode) return;
         MouseInput();
         MovementPerformed();
     }
@@ -30,7 +31,6 @@ public class PathFinder : MonoBehaviour
     {
         if(Input.GetMouseButtonDown(0) && !resetMovement)
         {
-
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             absoluteMousePosition = GetWorldGridPosition(mousePos);
 
@@ -63,7 +63,7 @@ public class PathFinder : MonoBehaviour
             SetMovementVector();
         }
 
-        transform.position = Vector3.MoveTowards(transform.position, movePoint, Time.deltaTime * pathfinderManager.GetPlayerSpeed());
+        transform.position = Vector3.MoveTowards(transform.position, movePoint, Time.deltaTime * pathfinderManager.PlayerSpeed);
     }
 
     private void FindPath(Vector3 startPosition, Vector3 endPosition)
@@ -184,7 +184,7 @@ public class PathFinder : MonoBehaviour
         if (pathfinderManager == null)
             pathfinderManager = PathfinderManager.instance;
 
-        if (nodePath == null || nodePath.Count <= 0 || !pathfinderManager.DrawPlayerPath()) return;
+        if (nodePath == null || nodePath.Count <= 0 || !pathfinderManager.DrawPlayerPath) return;
         if (transform.position == (Vector3)nodePath[nodePath.Count - 1].worldPosition) return;
 
         foreach (Node node in nodePath)

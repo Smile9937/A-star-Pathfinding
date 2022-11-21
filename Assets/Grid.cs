@@ -66,32 +66,6 @@ public class Grid : MonoBehaviour
                     if (worldTile4 != null) myNeighbors.Add(worldTile4);
                 }
                 #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y + 1] != null)
-                {
-                    Node worldTile4 = nodes[x + 1, y + 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-
-                if (nodes[x + 1, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x + 1, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                
-                if (nodes[x - 1, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x - 1, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-
-                if (nodes[x - 1, y + 1] != null)
-                {
-                    Node worldTile4 = nodes[x - 1, y + 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                #endregion
             }
             else if (y == 0)
             {
@@ -114,20 +88,6 @@ public class Grid : MonoBehaviour
                     if (worldTile3 != null) myNeighbors.Add(worldTile3);
                 }
                 #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y + 1] == null)
-                {
-                    Node worldTile3 = nodes[x + 1, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-
-                if (nodes[x - 1, y + 1] == null)
-                {
-                    Node worldTile3 = nodes[x - 1, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-                #endregion
             }
             else if (y == height - 1)
             {
@@ -146,20 +106,6 @@ public class Grid : MonoBehaviour
                 if (nodes[x - 1, y] != null)
                 {
                     Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
-                #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y - 1] != null)
-                {
-                    Node worldTile2 = nodes[x + 1, y - 1];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
-
-                if (nodes[x - 1, y - 1] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y - 1];
                     if (worldTile2 != null) myNeighbors.Add(worldTile2);
                 }
                 #endregion
@@ -188,20 +134,6 @@ public class Grid : MonoBehaviour
                     if (worldTile3 != null) myNeighbors.Add(worldTile3);
                 }
                 #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x + 1, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-
-                if (nodes[x + 1, y - 1] != null)
-                {
-                    Node worldTile3 = nodes[x + 1, y - 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-                #endregion
             }
             else if (y == 0)
             {
@@ -218,14 +150,6 @@ public class Grid : MonoBehaviour
                     if (worldTile3 != null) myNeighbors.Add(worldTile3);
                 }
                 #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x + 1, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-                #endregion
             }
             else if (y == height - 1)
             {
@@ -239,14 +163,6 @@ public class Grid : MonoBehaviour
                 if (nodes[x, y - 1] != null)
                 {
                     Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                #endregion
-
-                #region Diagonal
-                if (nodes[x + 1, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x + 1, y - 1];
                     if (worldTile4 != null) myNeighbors.Add(worldTile4);
                 }
                 #endregion
@@ -275,20 +191,6 @@ public class Grid : MonoBehaviour
                     if (worldTile4 != null) myNeighbors.Add(worldTile4);
                 }
                 #endregion
-
-                #region Diagonal
-                if (nodes[x - 1, y + 1] != null)
-                {
-                    Node worldTile4 = nodes[x - 1, y + 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-
-                if (nodes[x - 1, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x - 1, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                #endregion
             }
             else if (y == 0)
             {
@@ -301,14 +203,6 @@ public class Grid : MonoBehaviour
                 if (nodes[x, y + 1] != null)
                 {
                     Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-                #endregion
-
-                #region Diagonal
-                if (nodes[x - 1, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x - 1, y + 1];
                     if (worldTile3 != null) myNeighbors.Add(worldTile3);
                 }
                 #endregion
@@ -326,14 +220,6 @@ public class Grid : MonoBehaviour
                 {
                     Node worldTile4 = nodes[x, y - 1];
                     if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                #endregion
-
-                #region Diagonal
-                if (nodes[x - 1, y - 1] != null)
-                {
-                    Node worldTile3 = nodes[x - 1, y - 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
                 }
                 #endregion
             }
@@ -428,7 +314,7 @@ public class Grid : MonoBehaviour
         if (pathfinderManager == null)
             pathfinderManager = PathfinderManager.instance;
 
-        if (!pathfinderManager.DrawGrid() || nodes == null) return;
+        if (!pathfinderManager.DrawGrid || nodes == null) return;
         foreach(Node node in nodes)
         {
             if(node == null || !node.walkable) continue;
