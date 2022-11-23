@@ -13,57 +13,61 @@ public class GridEditor : MonoBehaviour
 {
     [SerializeField] private Canvas mainCanvas;
     [SerializeField] private Canvas editGridCavas;
+    [SerializeField] private Canvas createGridCavas;
+
+    [SerializeField] private Canvas[] canvases;
 
     [SerializeField] private Tilemap obstacleTileMap;
     [SerializeField] private Tilemap groundTileMap;
+    
+    [SerializeField] private Tilemap defaultObstacleTileMap;
+    [SerializeField] private Tilemap defaultGroundTileMap;
 
     [SerializeField] private LevelTile groundTile;
     [SerializeField] private LevelTile obstacleTile;
     [SerializeField] private LevelTile testTile;
 
-    private List<LayoutData> layoutDatas = new List<LayoutData>();
+    [SerializeField] private Grid grid;
+
+    [SerializeField] private TMP_Dropdown dropDown;
 
     private PathfinderManager pathfinderManager;
 
-    private int layoutIndex = 0;
+    private static int layoutIndex = 0;
 
-    [Serializable]
-    public class LayoutData
-    {
-        public string layoutName;
-        public List<LevelTile> tileData = new List<LevelTile>();
-    }
+    private const string defaultFileName = "Default Map";
 
-    [SerializeField] List<LayoutData> layoutData = new List<LayoutData>();
+    private static string fileName = "Default Map";
+    private static string path => Application.persistentDataPath + $"/LayoutSaveData";
+    private static string file => $"{fileName}.json";
+    private static string fullPath => $"{path}/{file}";
+
     public void SaveToJson()
     {
         Layout newLayout = new Layout();
 
         newLayout.layoutIndex = layoutIndex;
 
-        newLayout.name = $"Layout {layoutIndex}";
+        newLayout.name = fileName;
 
         newLayout.obstacleTiles = GetTilesFromMap(obstacleTileMap).ToList();
         newLayout.groundTiles = GetTilesFromMap(groundTileMap).ToList();
 
         IEnumerable<SavedTile> GetTilesFromMap(Tilemap map)
         {
-            foreach(Vector3Int pos in obstacleTileMap.cellBounds.allPositionsWithin)
+            foreach(Vector3Int pos in map.cellBounds.allPositionsWithin)
             {
-                if(obstacleTileMap.HasTile(pos))
+                if(map.HasTile(pos))
                 {
-                    LevelTile levelTile = obstacleTileMap.GetTile<LevelTile>(pos);
+                    LevelTile levelTile = map.GetTile<LevelTile>(pos);
 
                     yield return new SavedTile()
                     {
                         position = pos,
                         tile = levelTile
                     };
-
-                    //layoutData[layoutIndex].tileData.Add(levelTile);
                 }
             }
-
         }
 
 
@@ -73,17 +77,21 @@ public class GridEditor : MonoBehaviour
         //layoutDatas.Add(layoutData[layoutIndex]);
 
         string saveData = JsonUtility.ToJson(compressedString);
-        File.WriteAllText(Application.persistentDataPath + "/LayoutSaveData.json", compressedString);
+
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+
+        File.WriteAllText(fullPath, compressedString);
     }
 
     public class SaveData
     {
-        public List<string> Tiles = new List<string>();
+        public List<string> ObstacleTiles = new List<string>();
+        public List<string> GroundTiles = new List<string>();
 
         public static SaveData FromFile()
         {
-            string path = Application.persistentDataPath + "/LayoutSaveData.json";
-            string jsonString = File.ReadAllText(path);
+            string jsonString = File.ReadAllText(fullPath);
         
             return JsonUtility.FromJson<SaveData>(jsonString);
         }
@@ -93,35 +101,44 @@ public class GridEditor : MonoBehaviour
     {
         SaveData saveData = SaveData.FromFile();
 
-        obstacleTileMap.ClearAllTiles();
+        UpdateTilemap(groundTileMap, saveData.GroundTiles);
+        UpdateTilemap(obstacleTileMap, saveData.ObstacleTiles);
 
-        foreach (string tileData in saveData.Tiles)
+        void UpdateTilemap(Tilemap map, List<string> tileList)
         {
-            int tileType = int.Parse(tileData[0].ToString());
+            map.ClearAllTiles();
 
-            int x = int.Parse(tileData.Split("[")[1].Split(",")[0]);
-            int y = int.Parse(tileData.Split(",")[1].Split("]")[0]);
-
-            Vector3Int pos = new Vector3Int(x, y, 0);
-
-            switch (tileType)
+            foreach (string tileData in tileList)
             {
-                case 0:
-                    obstacleTileMap.SetTile(pos, groundTile);
-                    break;
-                case 1:
-                    obstacleTileMap.SetTile(pos, obstacleTile);
-                    break;
-                case 2:
-                    obstacleTileMap.SetTile(pos, testTile);
-                    break;
+                int tileType = int.Parse(tileData[0].ToString());
+
+                int x = int.Parse(tileData.Split("[")[1].Split(",")[0]);
+                int y = int.Parse(tileData.Split(",")[1].Split("]")[0]);
+
+                Vector3Int pos = new Vector3Int(x, y, 0);
+
+                switch (tileType)
+                {
+                    case 0:
+                        map.SetTile(pos, groundTile);
+                        break;
+                    case 1:
+                        map.SetTile(pos, obstacleTile);
+                        break;
+                    case 2:
+                        map.SetTile(pos, testTile);
+                        break;
+                }
             }
         }
+
     }
 
     public void LoadLayout(TMP_Dropdown change)
     {
-        Debug.Log(change.value);
+        layoutIndex = change.value;
+        fileName = dropDown.options[layoutIndex].text;
+        GetJson();
     }
 
     [Serializable]
@@ -142,63 +159,98 @@ public class GridEditor : MonoBehaviour
         {
             StringBuilder compressedString = new StringBuilder();
 
-            compressedString.Append(@"{""Tiles"":[");
+            compressedString.Append(@"{");
 
-            foreach (var obstacleTile in obstacleTiles)
+            AddTilesToJson(groundTiles, "GroundTiles");
+            AddTilesToJson(obstacleTiles, "ObstacleTiles");
+
+            void AddTilesToJson(List<SavedTile> tiles, string entryName)
             {
-                compressedString.Append($@"""{(int)obstacleTile.tile.type}[{obstacleTile.position.x},{obstacleTile.position.y}]"",");
+                compressedString.Append($@"""{entryName}"":[");
+
+                foreach (SavedTile obstacleTile in tiles)
+                {
+                    compressedString.Append($@"""{(int)obstacleTile.tile.type}[{obstacleTile.position.x},{obstacleTile.position.y}]"",");
+                }
+
+                if(compressedString[compressedString.Length - 1].ToString() == ",")
+                    compressedString.Remove(compressedString.Length - 1, 1);
+
+                compressedString.Append("],");
+
             }
-            compressedString.Length--;
-            compressedString.Append(@"]}");
+
+            if (compressedString[compressedString.Length - 1].ToString() == ",")
+                compressedString.Remove(compressedString.Length - 1, 1);
+
+            compressedString.Append("}");
 
             return compressedString.ToString();
         }
     }
-    /*private string Serialize(LayoutData layoutData)
-    {
-        StringBuilder compressedString = new StringBuilder();
-
-        compressedString.Append(@"{""Tiles"":[");
-
-        foreach (Vector3Int pos in obstacleTileMap.cellBounds.allPositionsWithin)
-        {
-            if (obstacleTileMap.HasTile(pos))
-            {
-                LevelTile levelTile = (LevelTile)obstacleTileMap.GetTile(pos);
-
-                layoutData.tileData.Add(levelTile);
-
-                compressedString.Append($@"""{(int)levelTile.type}[{pos.x},{pos.y}]"",");
-            }
-        }
-        compressedString.Length--;
-        compressedString.Append(@"]}");
-
-        return compressedString.ToString();
-    }*/
-
 
     private void Start()
     {
         pathfinderManager = PathfinderManager.instance;
         pathfinderManager.ToggleEditMode(false);
-        mainCanvas.enabled = true;
-        editGridCavas.enabled = false;
+        SetActiveCanvas(mainCanvas);
+        layoutIndex = 0;
+        dropDown.value = 0;
+
+        DirectoryInfo info = new DirectoryInfo(path);
+        FileInfo[] fileInfo = info.GetFiles();
+
+        void ReplaceTiles(Tilemap map, Tilemap replacement)
+        {
+            map.ClearAllTiles();
+
+            foreach (Vector3Int pos in replacement.cellBounds.allPositionsWithin)
+            {
+                if (replacement.HasTile(pos))
+                {
+                    LevelTile replacementTile = replacement.GetTile<LevelTile>(pos);
+                    map.SetTile(pos, replacementTile);
+                }
+            }
+        }
+
+        if(fileInfo.Length == 0)
+        {
+            ReplaceTiles(obstacleTileMap, defaultObstacleTileMap);
+            ReplaceTiles(groundTileMap, defaultGroundTileMap);
+
+            fileName = defaultFileName;
+            SaveToJson();
+        }
+        else
+        {
+            fileName = fileInfo[0].Name.Replace(fileInfo[0].Extension, "");
+            UpdateDropDown();
+            GetJson();
+        }
+
+        grid.CreateGrid();
     }
 
     public void EditGrid()
     {
         pathfinderManager.ToggleEditMode(true);
-        mainCanvas.enabled = false;
-        editGridCavas.enabled = true;
+        SetActiveCanvas(editGridCavas); 
     }
 
     public void StopEdit()
     {
         pathfinderManager.ToggleEditMode(false);
-        mainCanvas.enabled = true;
-        editGridCavas.enabled = false;
+        SetActiveCanvas(mainCanvas);
         PathfinderManager.InvokeGenerateGrid();
+    }
+
+    public void SetActiveCanvas(Canvas canvas)
+    {
+        foreach(Canvas _canvas in canvases)
+        {
+            _canvas.enabled = _canvas == canvas;
+        }
     }
 
     private void Update()
@@ -223,5 +275,46 @@ public class GridEditor : MonoBehaviour
         Vector3Int pos = obstacleTileMap.WorldToCell(mousePos);
 
         obstacleTileMap.SetTile(pos, tile);
+    }
+
+    public void OpenDropDown()
+    {
+        UpdateDropDown();
+    }
+
+    private void UpdateDropDown()
+    {
+        DirectoryInfo info = new DirectoryInfo(path);
+        FileInfo[] fileInfo = info.GetFiles();
+
+        int value = dropDown.value;
+
+        dropDown.ClearOptions();
+
+        foreach (FileInfo file in fileInfo)
+        {
+            if (file.Extension == ".json")
+            {
+                string name = file.Name.Replace(file.Extension, "");
+                TMP_Dropdown.OptionData currentOption = new TMP_Dropdown.OptionData();
+                currentOption.text = name;
+                dropDown.options.Add(currentOption);
+            }
+        }
+        if (value > dropDown.options.Count)
+        {
+            dropDown.value = 0;
+        }
+        else
+        {
+            dropDown.value = value;
+        }
+        dropDown.captionText.text = dropDown.options[dropDown.value].text;
+    }
+
+    public void CloseDropDown()
+    {
+        //Debug.Log("Close");
+        //dropDown.captionText.text = dropDown.options[dropDown.value].text;
     }
 }

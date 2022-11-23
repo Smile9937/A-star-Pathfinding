@@ -24,10 +24,6 @@ public class Grid : MonoBehaviour
         PathfinderManager.onGenerateGrid -= CreateGrid;
     }
 
-    private void Awake()
-    {
-        CreateGrid();
-    }
     private void Start()
     {
         pathfinderManager = PathfinderManager.instance;
@@ -229,7 +225,7 @@ public class Grid : MonoBehaviour
     }
 
     [ContextMenu("Create Grid")]
-    private void CreateGrid()
+    public void CreateGrid()
     {
         unsortedNodes.Clear();
 
