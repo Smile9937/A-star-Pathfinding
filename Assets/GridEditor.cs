@@ -11,36 +11,64 @@ using UnityEngine.Tilemaps;
 
 public class GridEditor : MonoBehaviour
 {
+    #region Canvases
+    [Header("Canvases")]
     [SerializeField] private Canvas mainCanvas;
     [SerializeField] private Canvas editGridCavas;
     [SerializeField] private Canvas createGridCavas;
+    //[SerializeField] private Canvas renameGridCavas;
 
     [SerializeField] private Canvas[] canvases;
+    #endregion
 
+    #region Tilemaps
+    [Header("Tilemaps")]
     [SerializeField] private Tilemap obstacleTileMap;
     [SerializeField] private Tilemap groundTileMap;
-    
+    [Space(6)]
     [SerializeField] private Tilemap defaultObstacleTileMap;
     [SerializeField] private Tilemap defaultGroundTileMap;
+    #endregion
 
+    #region Tiles
+    [Header("Tiles")]
     [SerializeField] private LevelTile groundTile;
     [SerializeField] private LevelTile obstacleTile;
     [SerializeField] private LevelTile testTile;
+    #endregion
 
-    [SerializeField] private Grid grid;
 
+    #region UI Elements
+    [Header("UI Elements")]
     [SerializeField] private TMP_Dropdown dropDown;
+
+    [SerializeField] private TMP_InputField createGridInputField;
+    [SerializeField] private TMP_InputField renameGridInputField;
+    #endregion
+
+    #region Grid
+    [Header("Grid")]
+    [SerializeField] private Grid grid;
+    #endregion
 
     private PathfinderManager pathfinderManager;
 
     private static int layoutIndex = 0;
 
     private const string defaultFileName = "Default Map";
+    private const string fileExtension = ".json";
+
+    private const string inputFieldEmptyMessage = "Input field is empty!";
+    private const string nameInUseMessage = "That name is already in use!";
 
     private static string fileName = "Default Map";
     private static string path => Application.persistentDataPath + $"/LayoutSaveData";
-    private static string file => $"{fileName}.json";
-    private static string fullPath => $"{path}/{file}";
+    private static string fullFileName => $"{fileName}{fileExtension}";
+    private static string fullPath => $"{path}/{fullFileName}";
+    private DirectoryInfo directoryInfo => new DirectoryInfo(path);
+    private FileInfo[] fileInfo => directoryInfo.GetFiles();
+    private string GetFileName(FileInfo file) => file.Name.Replace(file.Extension, "");
+    private bool NameExists(string name) => Array.Exists(fileInfo, value => GetFileName(value) == name);
 
     public void SaveToJson()
     {
@@ -70,13 +98,7 @@ public class GridEditor : MonoBehaviour
             }
         }
 
-
         string compressedString = newLayout.Serialize();
-
-        //layoutData[layoutIndex].layoutName = "Test";
-        //layoutDatas.Add(layoutData[layoutIndex]);
-
-        string saveData = JsonUtility.ToJson(compressedString);
 
         if (!Directory.Exists(path))
             Directory.CreateDirectory(path);
@@ -103,6 +125,8 @@ public class GridEditor : MonoBehaviour
 
         UpdateTilemap(groundTileMap, saveData.GroundTiles);
         UpdateTilemap(obstacleTileMap, saveData.ObstacleTiles);
+
+        grid.CreateGrid();
 
         void UpdateTilemap(Tilemap map, List<string> tileList)
         {
@@ -137,9 +161,11 @@ public class GridEditor : MonoBehaviour
     public void LoadLayout(TMP_Dropdown change)
     {
         layoutIndex = change.value;
-        fileName = dropDown.options[layoutIndex].text;
+        SetCurrentFilename();
         GetJson();
     }
+
+    private void SetCurrentFilename() => fileName = dropDown.options[layoutIndex].text;
 
     [Serializable]
     public class SavedTile
@@ -197,9 +223,22 @@ public class GridEditor : MonoBehaviour
         layoutIndex = 0;
         dropDown.value = 0;
 
-        DirectoryInfo info = new DirectoryInfo(path);
-        FileInfo[] fileInfo = info.GetFiles();
+        if(fileInfo.Length == 0)
+        {
+            CreateDefaultMap();
+        }
+        else
+        {
+            fileName = fileInfo[0].Name.Replace(fileInfo[0].Extension, "");
+            UpdateDropDown(dropDown.value);
+            GetJson();
+        }
 
+        grid.CreateGrid();
+
+    }
+    private void CreateDefaultMap()
+    {
         void ReplaceTiles(Tilemap map, Tilemap replacement)
         {
             map.ClearAllTiles();
@@ -214,35 +253,106 @@ public class GridEditor : MonoBehaviour
             }
         }
 
-        if(fileInfo.Length == 0)
-        {
-            ReplaceTiles(obstacleTileMap, defaultObstacleTileMap);
-            ReplaceTiles(groundTileMap, defaultGroundTileMap);
+        ReplaceTiles(obstacleTileMap, defaultObstacleTileMap);
+        ReplaceTiles(groundTileMap, defaultGroundTileMap);
 
-            fileName = defaultFileName;
-            SaveToJson();
-        }
-        else
-        {
-            fileName = fileInfo[0].Name.Replace(fileInfo[0].Extension, "");
-            UpdateDropDown();
-            GetJson();
-        }
-
-        grid.CreateGrid();
+        fileName = defaultFileName;
+        SaveToJson();
     }
 
     public void EditGrid()
     {
         pathfinderManager.ToggleEditMode(true);
-        SetActiveCanvas(editGridCavas); 
+        SetActiveCanvas(editGridCavas);
+
+        renameGridInputField.text = fileName;
     }
 
-    public void StopEdit()
+    public void ReturnToMainMenu()
     {
         pathfinderManager.ToggleEditMode(false);
+
         SetActiveCanvas(mainCanvas);
         PathfinderManager.InvokeGenerateGrid();
+    }
+
+    private void StopEdit(int dropdownValue)
+    {
+        UpdateDropDown(dropdownValue);
+        ReturnToMainMenu();
+    }
+
+    public void StartCreateGrid()
+    {
+        pathfinderManager.ToggleEditMode(true);
+        SetActiveCanvas(createGridCavas);
+    }
+
+    public void CreateGrid()
+    {
+        string inputText = createGridInputField.text;
+
+        if (inputText == "")
+        {
+            Debug.Log(inputFieldEmptyMessage);
+        }
+        else if (NameExists(inputText))
+        {
+            Debug.Log(nameInUseMessage);
+        }
+        else
+        {
+            fileName = inputText;
+            SaveToJson();
+
+            int index = 0;
+
+            for (int i = 0; i < fileInfo.Length; i++)
+            {
+                if (fileInfo[i].Name == fullFileName)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            createGridInputField.text = "";
+            StopEdit(index);
+        }
+    }
+
+    public void Edit()
+    {
+        RenameGrid();
+        SaveToJson();
+    }
+
+    public void RenameGrid()
+    {
+        string inputText = renameGridInputField.text;
+
+        if (inputText == "")
+        {
+            Debug.Log(inputFieldEmptyMessage);
+        }
+        else if (inputText == fileName)
+        {
+            StopEdit(dropDown.value);
+        }
+        else if (NameExists(inputText))
+        {
+            Debug.Log(nameInUseMessage);
+        }
+        else
+        {
+            string currentFile = fullPath;
+            string newFile = fullPath.Replace(fullFileName, inputText + fileExtension);
+
+            File.Move(currentFile, newFile);
+            fileName = inputText;
+
+            StopEdit(dropDown.value);
+        }
     }
 
     public void SetActiveCanvas(Canvas canvas)
@@ -257,12 +367,10 @@ public class GridEditor : MonoBehaviour
     {
         if(pathfinderManager.InEditMode && Input.GetMouseButton(0))
         {
-            if (EventSystem.current.IsPointerOverGameObject() || !IsMouseOverGameWindow) return;
             SetTile(obstacleTile);
         }
         else if(pathfinderManager.InEditMode && Input.GetMouseButton(1))
         {
-            if (EventSystem.current.IsPointerOverGameObject() || !IsMouseOverGameWindow) return;
             SetTile(null);
         }
     }
@@ -271,6 +379,8 @@ public class GridEditor : MonoBehaviour
 
     private void SetTile(LevelTile tile)
     {
+        if (EventSystem.current.IsPointerOverGameObject() || !IsMouseOverGameWindow) return;
+
         Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         Vector3Int pos = obstacleTileMap.WorldToCell(mousePos);
 
@@ -279,23 +389,20 @@ public class GridEditor : MonoBehaviour
 
     public void OpenDropDown()
     {
-        UpdateDropDown();
+        UpdateDropDown(dropDown.value);
     }
 
-    private void UpdateDropDown()
+    private void UpdateDropDown(int value)
     {
-        DirectoryInfo info = new DirectoryInfo(path);
-        FileInfo[] fileInfo = info.GetFiles();
-
-        int value = dropDown.value;
-
         dropDown.ClearOptions();
+
+        if (fileInfo.Length == 0) return;
 
         foreach (FileInfo file in fileInfo)
         {
-            if (file.Extension == ".json")
+            if (file.Extension == fileExtension)
             {
-                string name = file.Name.Replace(file.Extension, "");
+                string name = GetFileName(file);
                 TMP_Dropdown.OptionData currentOption = new TMP_Dropdown.OptionData();
                 currentOption.text = name;
                 dropDown.options.Add(currentOption);
@@ -311,6 +418,7 @@ public class GridEditor : MonoBehaviour
         }
         dropDown.captionText.text = dropDown.options[dropDown.value].text;
     }
+
 
     public void CloseDropDown()
     {
