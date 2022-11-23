@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class PathFinder : MonoBehaviour
 {
-    [SerializeField] private PathfinderManager pathfinderManager;
+    private PathfinderManager pathfinderManager;
     private Vector3 lastDirection;
     private bool moveDone = false;
     private List<Node> nodePath = new List<Node>();
