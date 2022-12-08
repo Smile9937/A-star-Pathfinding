@@ -5,9 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 
 public class GridEditor : MonoBehaviour
 {
@@ -16,7 +18,6 @@ public class GridEditor : MonoBehaviour
     [SerializeField] private Canvas mainCanvas;
     [SerializeField] private Canvas editGridCavas;
     [SerializeField] private Canvas createGridCavas;
-    //[SerializeField] private Canvas renameGridCavas;
 
     [SerializeField] private Canvas[] canvases;
     #endregion
@@ -25,16 +26,16 @@ public class GridEditor : MonoBehaviour
     [Header("Tilemaps")]
     [SerializeField] private Tilemap obstacleTileMap;
     [SerializeField] private Tilemap groundTileMap;
-    [Space(6)]
-    [SerializeField] private Tilemap defaultObstacleTileMap;
-    [SerializeField] private Tilemap defaultGroundTileMap;
     #endregion
+
+    [Header("Default Map")]
+    [SerializeField] private LayoutPresets defaultMap;
+    [SerializeField] private LayoutPresets emptyMap;
 
     #region Tiles
     [Header("Tiles")]
     [SerializeField] private LevelTile groundTile;
     [SerializeField] private LevelTile obstacleTile;
-    [SerializeField] private LevelTile testTile;
     #endregion
 
 
@@ -44,12 +45,25 @@ public class GridEditor : MonoBehaviour
 
     [SerializeField] private TMP_InputField createGridInputField;
     [SerializeField] private TMP_InputField renameGridInputField;
+
+    [SerializeField] private Image placeTileImage;
+    [SerializeField] private Image placeStartPosImage;
+
+    [SerializeField] private Image placeCreateTileImage;
+    [SerializeField] private Image placeCreateStartPosImage;
+
+    [SerializeField] private Color normalColor;
+    [SerializeField] private Color selectedColor;
     #endregion
 
     #region Grid
     [Header("Grid")]
     [SerializeField] private Grid grid;
     #endregion
+
+    [SerializeField] private PathFinder player;
+
+    private Vector3 playerStart;
 
     private PathfinderManager pathfinderManager;
 
@@ -69,17 +83,43 @@ public class GridEditor : MonoBehaviour
     private FileInfo[] fileInfo => directoryInfo.GetFiles();
     private string GetFileName(FileInfo file) => file.Name.Replace(file.Extension, "");
     private bool NameExists(string name) => Array.Exists(fileInfo, value => GetFileName(value) == name);
+    private Vector3 GetWorldGridPosition(Vector3 worldPosition) => new Vector3(Mathf.Floor(worldPosition.x) + 0.5f, Mathf.Floor(worldPosition.y) + 0.5f);
+    private enum PlacementType
+    {
+        Tile,
+        PlayerStart
+    }
+    private PlacementType placementType;
+    private void Start()
+    {
+        pathfinderManager = PathfinderManager.instance;
+        pathfinderManager.ToggleEditMode(false);
+        PlaceTiles();
+        SetActiveCanvas(mainCanvas);
+        layoutIndex = 0;
+        dropDown.value = 0;
+
+        if(fileInfo.Length == 0)
+        {
+            CreateDefaultMap();
+        }
+        else
+        {
+            fileName = fileInfo[0].Name.Replace(fileInfo[0].Extension, "");
+            UpdateDropDown(dropDown.value);
+            GetJson();
+        }
+
+        grid.CreateGrid();
+    }
 
     public void SaveToJson()
     {
         Layout newLayout = new Layout();
 
-        newLayout.layoutIndex = layoutIndex;
-
-        newLayout.name = fileName;
-
         newLayout.obstacleTiles = GetTilesFromMap(obstacleTileMap).ToList();
         newLayout.groundTiles = GetTilesFromMap(groundTileMap).ToList();
+        newLayout.playerPosition = player.transform.position;
 
         IEnumerable<SavedTile> GetTilesFromMap(Tilemap map)
         {
@@ -108,6 +148,8 @@ public class GridEditor : MonoBehaviour
 
     public class SaveData
     {
+        public List<string> PlayerPosition = new List<string>();
+
         public List<string> ObstacleTiles = new List<string>();
         public List<string> GroundTiles = new List<string>();
 
@@ -125,6 +167,14 @@ public class GridEditor : MonoBehaviour
 
         UpdateTilemap(groundTileMap, saveData.GroundTiles);
         UpdateTilemap(obstacleTileMap, saveData.ObstacleTiles);
+
+        float playerX = float.Parse(saveData.PlayerPosition[0].Split("[")[1].Split(",")[0]);
+        float playerY = float.Parse(saveData.PlayerPosition[0].Split(",")[1].Split("]")[0]);
+
+        Vector3 playerPosition = new Vector3(playerX, playerY, 0);
+        playerStart = playerPosition;
+
+        player.SetPosition(playerPosition);
 
         grid.CreateGrid();
 
@@ -148,9 +198,6 @@ public class GridEditor : MonoBehaviour
                         break;
                     case 1:
                         map.SetTile(pos, obstacleTile);
-                        break;
-                    case 2:
-                        map.SetTile(pos, testTile);
                         break;
                 }
             }
@@ -176,16 +223,17 @@ public class GridEditor : MonoBehaviour
 
     public struct Layout
     {
-        public string name;
-        public int layoutIndex;
         public List<SavedTile> groundTiles;
         public List<SavedTile> obstacleTiles;
+        public Vector3 playerPosition;
 
         public string Serialize()
         {
             StringBuilder compressedString = new StringBuilder();
 
-            compressedString.Append(@"{");
+            compressedString.Append("{");
+
+            compressedString.Append($@"""PlayerPosition"":[""[{playerPosition.x},{playerPosition.y}]""],");
 
             AddTilesToJson(groundTiles, "GroundTiles");
             AddTilesToJson(obstacleTiles, "ObstacleTiles");
@@ -215,31 +263,17 @@ public class GridEditor : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        pathfinderManager = PathfinderManager.instance;
-        pathfinderManager.ToggleEditMode(false);
-        SetActiveCanvas(mainCanvas);
-        layoutIndex = 0;
-        dropDown.value = 0;
-
-        if(fileInfo.Length == 0)
-        {
-            CreateDefaultMap();
-        }
-        else
-        {
-            fileName = fileInfo[0].Name.Replace(fileInfo[0].Extension, "");
-            UpdateDropDown(dropDown.value);
-            GetJson();
-        }
-
-        grid.CreateGrid();
-
-    }
     private void CreateDefaultMap()
     {
-        void ReplaceTiles(Tilemap map, Tilemap replacement)
+        LoadPresetMap(defaultMap);
+
+        fileName = defaultFileName;
+        SaveToJson();
+    }
+
+    private void LoadPresetMap(LayoutPresets preset)
+    {
+        static void ReplaceTiles(Tilemap map, Tilemap replacement)
         {
             map.ClearAllTiles();
 
@@ -253,18 +287,17 @@ public class GridEditor : MonoBehaviour
             }
         }
 
-        ReplaceTiles(obstacleTileMap, defaultObstacleTileMap);
-        ReplaceTiles(groundTileMap, defaultGroundTileMap);
+        ReplaceTiles(obstacleTileMap, preset.obstacleTileMap);
+        ReplaceTiles(groundTileMap, preset.groundTileMap);
 
-        fileName = defaultFileName;
-        SaveToJson();
+        player.SetPosition(preset.playerStart.position);
     }
 
     public void EditGrid()
     {
         pathfinderManager.ToggleEditMode(true);
         SetActiveCanvas(editGridCavas);
-
+        player.SetPosition(playerStart);
         renameGridInputField.text = fileName;
     }
 
@@ -273,11 +306,13 @@ public class GridEditor : MonoBehaviour
         pathfinderManager.ToggleEditMode(false);
 
         SetActiveCanvas(mainCanvas);
+        GetJson();
         PathfinderManager.InvokeGenerateGrid();
     }
 
     private void StopEdit(int dropdownValue)
     {
+        SaveToJson();
         UpdateDropDown(dropdownValue);
         ReturnToMainMenu();
     }
@@ -286,6 +321,7 @@ public class GridEditor : MonoBehaviour
     {
         pathfinderManager.ToggleEditMode(true);
         SetActiveCanvas(createGridCavas);
+        LoadPresetMap(emptyMap);
     }
 
     public void CreateGrid()
@@ -321,11 +357,7 @@ public class GridEditor : MonoBehaviour
         }
     }
 
-    public void Edit()
-    {
-        RenameGrid();
-        SaveToJson();
-    }
+    public void SaveEdit() => RenameGrid();
 
     public void RenameGrid()
     {
@@ -367,12 +399,35 @@ public class GridEditor : MonoBehaviour
     {
         if(pathfinderManager.InEditMode && Input.GetMouseButton(0))
         {
-            SetTile(obstacleTile);
+            switch(placementType)
+            {
+                case PlacementType.Tile:
+                    SetTile(obstacleTile);
+                    break;
+                case PlacementType.PlayerStart:
+                    ChangePlayerPos();
+                    break;
+            }
         }
         else if(pathfinderManager.InEditMode && Input.GetMouseButton(1))
         {
-            SetTile(null);
+            switch (placementType)
+            {
+                case PlacementType.Tile:
+                    SetTile(null);
+                    break;
+            }
         }
+    }
+
+    private void ChangePlayerPos()
+    {
+        if (EventSystem.current.IsPointerOverGameObject() || !IsMouseOverGameWindow) return;
+
+        Vector3 mousePos = GetWorldGridPosition(Camera.main.ScreenToWorldPoint(Input.mousePosition));
+        mousePos.z = player.transform.position.z;
+
+        player.SetPosition(mousePos);
     }
 
     private bool IsMouseOverGameWindow => 0 <= Input.mousePosition.x && 0 <= Input.mousePosition.y && Screen.width >= Input.mousePosition.x && Screen.height >= Input.mousePosition.y;
@@ -418,11 +473,29 @@ public class GridEditor : MonoBehaviour
         }
         dropDown.captionText.text = dropDown.options[dropDown.value].text;
     }
-
-
-    public void CloseDropDown()
+    
+    public void PlaceTiles()
     {
-        //Debug.Log("Close");
-        //dropDown.captionText.text = dropDown.options[dropDown.value].text;
+        placementType = PlacementType.Tile;
+        placeTileImage.color = selectedColor;
+        placeStartPosImage.color = normalColor;
+
+        placeCreateTileImage.color = selectedColor;
+        placeCreateStartPosImage.color = normalColor;
+    }
+    
+    public void PlacePlayerStart()
+    {
+        placementType = PlacementType.PlayerStart;
+        placeTileImage.color = normalColor;
+        placeStartPosImage.color = selectedColor;
+
+        placeCreateTileImage.color = normalColor;
+        placeCreateStartPosImage.color = selectedColor;
+    }
+
+    public void OpenMapFolder()
+    {
+        EditorUtility.RevealInFinder(fullPath);
     }
 }

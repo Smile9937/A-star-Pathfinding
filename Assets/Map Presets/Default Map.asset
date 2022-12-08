@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4524e76f9f6f8f142bc8e42f9b60d347, type: 3}
+  m_Name: Default Map
+  m_EditorClassIdentifier: 
+  playerStart: {fileID: 4302245375459668498, guid: 717ee5afdf934a644bb4e623bbcadc5f, type: 3}
+  groundTileMap: {fileID: 1566116402807318870, guid: f6a7221e41717944a809050f110e4c13, type: 3}
+  obstacleTileMap: {fileID: 4197700642335460379, guid: f42d5b0514fbac44085fb273c86443fe, type: 3}

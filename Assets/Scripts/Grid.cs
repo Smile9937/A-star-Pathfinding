@@ -1,4 +1,6 @@
+using Packages.Rider.Editor.UnitTesting;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -15,6 +17,8 @@ public class Grid : MonoBehaviour
     
     private Node[,] nodes;
     private Vector2Int gridBound = new Vector2Int(0, 0);
+
+    public Tilemap GetObstacleTilemap() => obstacleTilemap;
     private void OnEnable()
     {
         PathfinderManager.onGenerateGrid += CreateGrid;
@@ -33,77 +37,105 @@ public class Grid : MonoBehaviour
     {
         List<Node> myNeighbors = new List<Node>();
 
+        void AddNeighbor(int neighborX, int neighborY)
+        {
+            if (nodes[neighborX, neighborY] != null && nodes[neighborX, neighborY].walkable)
+            {
+                Node worldTile = nodes[neighborX, neighborY];
+                if (worldTile != null) myNeighbors.Add(worldTile);
+            }
+        }
+        
+        void AddDiagonalNeighbor(int neighborX, int neighborY)
+        {
+            if (nodes[neighborX, neighborY] == null || !nodes[neighborX, neighborY].walkable) return;
+
+            if(neighborX == x + 1 && neighborY == y + 1)
+            {
+                PositionCheck(x + 1, y, x, y + 1);
+                return;
+            }
+
+            if(neighborX == x - 1 && neighborY == y + 1)
+            {
+                PositionCheck(x - 1, y, x, y + 1);
+                return;
+            }
+
+            if (neighborX == x - 1 && neighborY == y - 1)
+            {
+                PositionCheck(x - 1, y, x, y - 1);
+                return;
+            }
+
+            if(neighborX == x + 1 && neighborY == y - 1)
+            {
+                PositionCheck(x + 1, y, x, y - 1);
+                return;
+            }
+
+
+            void PositionCheck(int x1, int y1, int x2, int y2)
+            {
+                Node worldTile = nodes[neighborX, neighborY];
+
+                if (nodes[x1, y1] != null && nodes[x1, y1].walkable)
+                {
+                    myNeighbors.Add(worldTile);
+                    return;
+                }
+
+                if (nodes[x2, y2] != null && nodes[x2, y2].walkable)
+                {
+                    myNeighbors.Add(worldTile);
+                    return;
+                }
+            }
+        }
+
         if (x > 0 && x < width - 1)
         {
             if (y > 0 && y < height - 1)
             {
                 #region Cardial
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
-
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
-
-                if (nodes[x, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x - 1, y);
+                AddNeighbor(x, y + 1);
+                AddNeighbor(x, y - 1);
                 #endregion
+
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y + 1);
+                AddDiagonalNeighbor(x + 1, y - 1);
+                AddDiagonalNeighbor(x - 1, y + 1);
+                AddDiagonalNeighbor(x - 1, y - 1);
+                #endregion
+
             }
             else if (y == 0)
             {
                 #region Cardinal
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x - 1, y);
+                AddNeighbor(x, y + 1);
+                #endregion
 
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
-
-                if (nodes[x, y + 1] == null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y + 1);
+                AddDiagonalNeighbor(x - 1, y + 1);
                 #endregion
             }
             else if (y == height - 1)
             {
                 #region Cardinal
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
+                AddNeighbor(x, y - 1);
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x - 1, y);
+                #endregion
 
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y - 1);
+                AddDiagonalNeighbor(x - 1, y - 1);
                 #endregion
             }
         }
@@ -112,55 +144,36 @@ public class Grid : MonoBehaviour
             if (y > 0 && y < height - 1)
             {
                 #region Cardinal
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x, y - 1);
+                AddNeighbor(x, y + 1);
+                #endregion
 
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
-
-                if (nodes[x, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y + 1);
+                AddDiagonalNeighbor(x + 1, y - 1);
                 #endregion
             }
             else if (y == 0)
             {
                 #region Cardnial
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x, y + 1);
+                #endregion
 
-                if (nodes[x, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y + 1);
                 #endregion
             }
             else if (y == height - 1)
             {
                 #region Cardinal
-                if (nodes[x + 1, y] != null)
-                {
-                    Node worldTile1 = nodes[x + 1, y];
-                    if (worldTile1 != null) myNeighbors.Add(worldTile1);
-                }
+                AddNeighbor(x + 1, y);
+                AddNeighbor(x, y - 1);
+                #endregion
 
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x + 1, y - 1);
                 #endregion
             }
         }
@@ -169,54 +182,36 @@ public class Grid : MonoBehaviour
             if (y > 0 && y < height - 1)
             {
                 #region Cardinal
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile4 = nodes[x - 1, y];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
+                AddNeighbor(x - 1, y);
+                AddNeighbor(x, y + 1);
+                AddNeighbor(x, y - 1);
+                #endregion
 
-                if (nodes[x, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
-
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x - 1, y + 1);
+                AddDiagonalNeighbor(x - 1, y - 1);
                 #endregion
             }
             else if (y == 0)
             {
                 #region Cardinal
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
-                if (nodes[x, y + 1] != null)
-                {
-                    Node worldTile3 = nodes[x, y + 1];
-                    if (worldTile3 != null) myNeighbors.Add(worldTile3);
-                }
+                AddNeighbor(x - 1, y);
+                AddNeighbor(x, y + 1);
+                #endregion
+
+                #region Diagonal
+                AddDiagonalNeighbor(x - 1, y + 1);
                 #endregion
             }
             else if (y == height - 1)
             {
                 #region Cardinal
-                if (nodes[x - 1, y] != null)
-                {
-                    Node worldTile2 = nodes[x - 1, y];
-                    if (worldTile2 != null) myNeighbors.Add(worldTile2);
-                }
+                AddNeighbor(x - 1, y);
+                AddNeighbor(x, y - 1);
+                #endregion
 
-                if (nodes[x, y - 1] != null)
-                {
-                    Node worldTile4 = nodes[x, y - 1];
-                    if (worldTile4 != null) myNeighbors.Add(worldTile4);
-                }
+                #region Diagonal
+                AddDiagonalNeighbor(x - 1, y - 1);
                 #endregion
             }
         }
@@ -282,7 +277,7 @@ public class Grid : MonoBehaviour
         }
     }
 
-    public Node GetNodeByCellPosition(Vector2 worldPosition)
+    public Node GetNodeByWorldPosition(Vector2 worldPosition)
     {
         Vector3Int cellPosition = floorTilemap.WorldToCell(worldPosition);
         Node node = null;
